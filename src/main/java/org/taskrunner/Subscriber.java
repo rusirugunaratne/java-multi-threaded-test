@@ -5,7 +5,7 @@ import java.util.Set;
 
 public class Subscriber {
     private final String subscriberName;
-    private Set<String> taskTypes;
+    private final Set<String> taskTypes;
 
     public Subscriber(String subscriberName) {
         this.subscriberName = subscriberName;
@@ -26,7 +26,7 @@ public class Subscriber {
     }
 
     public void update(Topic topic) {
-        String message = subscriberName + " received result for task type " + topic.getTaskType() + ": " + topic.getResult();
+        String message = subscriberName + " received result for task type " + topic.taskType() + ": " + topic.result();
         Logger.getInstance().log(message, java.awt.Color.GREEN);
         System.out.println(message);
     }

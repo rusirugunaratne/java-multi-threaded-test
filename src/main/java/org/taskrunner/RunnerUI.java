@@ -24,7 +24,7 @@ public class RunnerUI extends JFrame {
     private JRadioButton radioPlatformThreads;
     private JRadioButton radioVirtualThreads;
 
-    private TaskExecutor executor;
+    private final TaskExecutor executor;
     private final DefaultListModel<String> taskTypeListModel;
     private final DefaultListModel<String> subscriberListModel;
     private boolean isExecuting = false;
@@ -49,151 +49,131 @@ public class RunnerUI extends JFrame {
         threadGroup.add(radioPlatformThreads);
         threadGroup.add(radioVirtualThreads);
 
-        btnAddTaskType.addActionListener(e -> {
-            String taskType = JOptionPane.showInputDialog("Enter Task Type:");
-            if (taskType != null && !taskType.trim().isEmpty()) {
-                taskTypeListModel.addElement(taskType.trim());
-                Logger.getInstance().log("Added task type: " + taskType, Color.BLUE);
-            }
-        });
+        initializeListeners();
+    }
 
-        btnAddSubscriber.addActionListener(e -> {
-            String subscriberName = JOptionPane.showInputDialog("Enter Subscriber Name:");
-            if (subscriberName != null && !subscriberName.trim().isEmpty()) {
-                List<String> selectedTasks = selectTasksForSubscriber();
-                if (!selectedTasks.isEmpty()) {
-                    Subscriber newSubscriber = new Subscriber(subscriberName.trim());
-                    for (String taskType : selectedTasks) {
-                        newSubscriber.addTaskType(taskType);
-                        if (isExecuting) {
-                            executor.subscribe(taskType, newSubscriber);
-                        } else {
-                            pendingSubscribers.add(newSubscriber);
-                        }
+    private void initializeListeners() {
+        btnAddTaskType.addActionListener(e -> addTaskType());
+        btnAddSubscriber.addActionListener(e -> addSubscriber());
+        btnStopExecution.addActionListener(e -> stopExecution());
+        btnForceStopExecution.addActionListener(e -> forceStopExecution());
+        btnStartExecution.addActionListener(e -> startExecution());
+        btnAddTask.addActionListener(e -> addTask());
+        btnUnsubscribe.addActionListener(e -> unsubscribe());
+    }
+
+    private void addTaskType() {
+        String taskType = JOptionPane.showInputDialog("Enter Task Type:");
+        if (taskType != null && !taskType.trim().isEmpty()) {
+            taskTypeListModel.addElement(taskType.trim());
+            Logger.getInstance().log("Added task type: " + taskType, Color.BLUE);
+        }
+    }
+
+    private void addSubscriber() {
+        String subscriberName = JOptionPane.showInputDialog("Enter Subscriber Name:");
+        if (subscriberName != null && !subscriberName.trim().isEmpty()) {
+            List<String> selectedTasks = selectTasksForSubscriber();
+            if (!selectedTasks.isEmpty()) {
+                Subscriber newSubscriber = new Subscriber(subscriberName.trim());
+                for (String taskType : selectedTasks) {
+                    newSubscriber.addTaskType(taskType);
+                    if (isExecuting) {
+                        executor.subscribe(taskType, newSubscriber);
+                    } else {
+                        pendingSubscribers.add(newSubscriber);
                     }
-                    subscriberListModel.addElement(subscriberName.trim());
-                    Logger.getInstance().log("Subscriber " + subscriberName.trim() + " added with tasks: " + String.join(", ", selectedTasks), Color.BLUE);
-                } else {
-                    Logger.getInstance().log("No tasks selected for subscriber " + subscriberName, Color.RED);
                 }
+                subscriberListModel.addElement(subscriberName.trim());
+                Logger.getInstance().log("Subscriber " + subscriberName.trim() + " added with tasks: " + String.join(", ", selectedTasks), Color.BLUE);
+            } else {
+                Logger.getInstance().log("No tasks selected for subscriber " + subscriberName, Color.RED);
             }
-        });
+        }
+    }
 
+    private void stopExecution() {
+        executor.stop();
+        isExecuting = false;
+        Logger.getInstance().log("Executor will shutdown after execution", Color.RED);
+    }
 
-        btnStopExecution.addActionListener(e -> {
-            executor.stop();
-            isExecuting = false;
-            Logger.getInstance().log("Executor will shutdown after execution", Color.RED);
-        });
+    private void forceStopExecution() {
+        executor.forceStop();
+        isExecuting = false;
+        Logger.getInstance().log("Executor shutdown", Color.RED);
+    }
 
-        btnForceStopExecution.addActionListener(e -> {
-            executor.forceStop();
-            isExecuting = false;
-            Logger.getInstance().log("Executor shutdown", Color.RED);
-        });
+    private void startExecution() {
+        try {
+            Random random = new Random();
+            int threadPoolSize = Integer.parseInt(txtThreadPoolSize.getText());
+            int maxRandomDelay = Integer.parseInt(txtMaxRandomDelay.getText());
+            int initialTaskCount = Integer.parseInt(txtInitialTaskCount.getText());
 
-        btnStartExecution.addActionListener(e -> {
-            try {
+            if (radioVirtualThreads.isSelected()) {
+                executor.setExecutorService(Executors.newVirtualThreadPerTaskExecutor());
+                Logger.getInstance().log("Starting execution with virtual threads for " + initialTaskCount + " tasks.", Color.GREEN);
+            } else if (radioPlatformThreads.isSelected()) {
+                executor.setExecutorService(Executors.newFixedThreadPool(threadPoolSize));
+                Logger.getInstance().log("Starting execution with platform threads for " + initialTaskCount + " tasks.", Color.GREEN);
+            } else {
+                Logger.getInstance().log("Please select a thread type (Platform or Virtual) before starting execution.", Color.RED);
+                return;
+            }
+
+            isExecuting = true;
+
+            subscribePendingSubscribers();
+
+            for (int i = 0; i < initialTaskCount; i++) {
+                int randomDelay = random.nextInt(maxRandomDelay + 1);
+                String randomTaskType = taskTypeListModel.get(random.nextInt(taskTypeListModel.size()));
+                executor.submit(new Task(randomTaskType, "Task No: " + i, randomDelay));
+            }
+        } catch (NumberFormatException ex) {
+            Logger.getInstance().log("Invalid input for thread pool size, max delay, or task count.", Color.RED);
+        }
+    }
+
+    private void subscribePendingSubscribers() {
+        for (Subscriber subscriber : pendingSubscribers) {
+            for (String taskType : subscriber.getSubscribedTaskTypes()) {
+                executor.subscribe(taskType, subscriber);
+            }
+        }
+        pendingSubscribers.clear();
+    }
+
+    private void addTask() {
+        String taskName = JOptionPane.showInputDialog("Enter Task Name:");
+        if (taskName != null && !taskName.trim().isEmpty()) {
+            String selectedTaskType = selectTaskTypeForNewTask();
+
+            if (selectedTaskType != null && !selectedTaskType.trim().isEmpty()) {
                 Random random = new Random();
-                int threadPoolSize = Integer.parseInt(txtThreadPoolSize.getText());
-                int maxRandomDelay = Integer.parseInt(txtMaxRandomDelay.getText());
-                int initialTaskCount = Integer.parseInt(txtInitialTaskCount.getText());
-
-                if (radioVirtualThreads.isSelected()) {
-                    executor.setExecutorService(Executors.newVirtualThreadPerTaskExecutor());
-                    Logger.getInstance().log("Starting execution with virtual threads for " + initialTaskCount + " tasks.", Color.GREEN);
-                } else if (radioPlatformThreads.isSelected()) {
-                    executor.setExecutorService(Executors.newFixedThreadPool(threadPoolSize));
-                    Logger.getInstance().log("Starting execution with platform threads for " + initialTaskCount + " tasks.", Color.GREEN);
-                } else {
-                    Logger.getInstance().log("Please select a thread type (Platform or Virtual) before starting execution.", Color.RED);
-                    return;
-                }
-
-                isExecuting = true;
-
-                for (Subscriber subscriber : pendingSubscribers) {
-                    for (String taskType : subscriber.getSubscribedTaskTypes()) {
-                        executor.subscribe(taskType, subscriber);
-                    }
-                }
-                pendingSubscribers.clear();
-
-                for (int i = 0; i < initialTaskCount; i++) {
-                    int randomDelay = random.nextInt(maxRandomDelay + 1);
-                    String randomTaskType = taskTypeListModel.get(random.nextInt(taskTypeListModel.size()));
-                    executor.submit(new Task(randomTaskType, "Task No: " + i, randomDelay));
-                }
-            } catch (NumberFormatException ex) {
-                Logger.getInstance().log("Invalid input for thread pool size, max delay, or task count.", Color.RED);
+                int randomDelay = random.nextInt(Integer.parseInt(txtMaxRandomDelay.getText()) + 1);
+                Task newTask = new Task(selectedTaskType, taskName.trim(), randomDelay);
+                executor.submit(newTask);
+                Logger.getInstance().log("Added task: " + taskName.trim() + " with type: " + selectedTaskType, Color.BLUE);
+            } else {
+                Logger.getInstance().log("No task type selected for task " + taskName, Color.RED);
             }
-        });
-
-
-        btnAddTask.addActionListener(e -> {
-            String taskName = JOptionPane.showInputDialog("Enter Task Name:");
-            if (taskName != null && !taskName.trim().isEmpty()) {
-                String selectedTaskType = selectTaskTypeForNewTask();
-
-                if (selectedTaskType != null && !selectedTaskType.trim().isEmpty()) {
-                    Random random = new Random();
-                    int randomDelay = random.nextInt(Integer.parseInt(txtMaxRandomDelay.getText()) + 1);
-                    Task newTask = new Task(selectedTaskType, taskName.trim(), randomDelay);
-                    executor.submit(newTask);
-                    Logger.getInstance().log("Added task: " + taskName.trim() + " with type: " + selectedTaskType, Color.BLUE);
-                } else {
-                    Logger.getInstance().log("No task type selected for task " + taskName, Color.RED);
-                }
-            }
-        });
-
-        btnUnsubscribe.addActionListener(e -> {
-            String subscriberName = selectSubscriberForUnsubscription();
-            if (subscriberName != null && !subscriberName.trim().isEmpty()) {
-                String taskType = selectTaskTypeForUnsubscription();
-                if (taskType != null && !taskType.trim().isEmpty()) {
-                    Subscriber subscriber = findSubscriber(subscriberName);
-                    if (subscriber != null) {
-                        executor.unsubscribe(taskType, subscriber);
-                        Logger.getInstance().log("Subscriber " + subscriberName.trim() + " unsubscribed from task type: " + taskType, Color.RED);
-                    }
-                }
-            }
-        });
+        }
     }
 
-    private String selectSubscriberForUnsubscription() {
-        JComboBox<String> comboBox = new JComboBox<>();
-        for (int i = 0; i < subscriberListModel.size(); i++) {
-            comboBox.addItem(subscriberListModel.get(i));
+    private void unsubscribe() {
+        String subscriberName = selectSubscriberForUnsubscription();
+        if (subscriberName != null && !subscriberName.trim().isEmpty()) {
+            String taskType = selectTaskTypeForUnsubscription();
+            if (taskType != null && !taskType.trim().isEmpty()) {
+                Subscriber subscriber = findSubscriber(subscriberName);
+                if (subscriber != null) {
+                    executor.unsubscribe(taskType, subscriber);
+                    Logger.getInstance().log("Subscriber " + subscriberName.trim() + " unsubscribed from task type: " + taskType, Color.RED);
+                }
+            }
         }
-
-        JPanel panel = new JPanel();
-        panel.add(new JLabel("Select Subscriber to Unsubscribe:"));
-        panel.add(comboBox);
-
-        int option = JOptionPane.showConfirmDialog(this, panel, "Select Subscriber", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-        if (option == JOptionPane.OK_OPTION) {
-            return (String) comboBox.getSelectedItem();
-        }
-        return null;
-    }
-
-    private String selectTaskTypeForUnsubscription() {
-        JComboBox<String> comboBox = new JComboBox<>();
-        for (int i = 0; i < taskTypeListModel.size(); i++) {
-            comboBox.addItem(taskTypeListModel.get(i));
-        }
-
-        JPanel panel = new JPanel();
-        panel.add(new JLabel("Select Task Type to Unsubscribe:"));
-        panel.add(comboBox);
-
-        int option = JOptionPane.showConfirmDialog(this, panel, "Select Task Type", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-        if (option == JOptionPane.OK_OPTION) {
-            return (String) comboBox.getSelectedItem();
-        }
-        return null;
     }
 
     private Subscriber findSubscriber(String subscriberName) {
@@ -205,7 +185,6 @@ public class RunnerUI extends JFrame {
         }
         return null;
     }
-
 
     private void addDefaultSubscriber() {
         String defaultSubscriberName = "DFLT_SUB_01";
@@ -224,14 +203,28 @@ public class RunnerUI extends JFrame {
     }
 
     private String selectTaskTypeForNewTask() {
+        return selectItemFromList("Select Task Type for New Task:", taskTypeListModel);
+    }
+
+    private String selectSubscriberForUnsubscription() {
+        return selectItemFromList("Select Subscriber to Unsubscribe:", subscriberListModel);
+    }
+
+    private String selectTaskTypeForUnsubscription() {
+        return selectItemFromList("Select Task Type to Unsubscribe:", taskTypeListModel);
+    }
+
+    private String selectItemFromList(String label, DefaultListModel<String> listModel) {
         JComboBox<String> comboBox = new JComboBox<>();
-        for (int i = 0; i < taskTypeListModel.size(); i++) {
-            comboBox.addItem(taskTypeListModel.get(i));
+        for (int i = 0; i < listModel.size(); i++) {
+            comboBox.addItem(listModel.get(i));
         }
+
         JPanel panel = new JPanel();
-        panel.add(new JLabel("Select Task Type for New Task:"));
+        panel.add(new JLabel(label));
         panel.add(comboBox);
-        int option = JOptionPane.showConfirmDialog(this, panel, "Select Task Type", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+
+        int option = JOptionPane.showConfirmDialog(this, panel, "Select Item", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
         if (option == JOptionPane.OK_OPTION) {
             return (String) comboBox.getSelectedItem();
         }
@@ -244,17 +237,17 @@ public class RunnerUI extends JFrame {
         for (int i = 0; i < taskTypeListModel.size(); i++) {
             checkBoxes[i] = new JCheckBox(taskTypeListModel.get(i));
         }
+
         JPanel panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
         for (JCheckBox checkBox : checkBoxes) {
             panel.add(checkBox);
         }
-        int option = JOptionPane.showConfirmDialog(this, panel, "Select Tasks to Subscribe To", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
 
+        int option = JOptionPane.showConfirmDialog(this, panel, "Select Tasks for Subscriber", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
         if (option == JOptionPane.OK_OPTION) {
-            for (JCheckBox checkBox : checkBoxes) {
-                if (checkBox.isSelected()) {
-                    selectedTasks.add(checkBox.getText());
+            for (int i = 0; i < checkBoxes.length; i++) {
+                if (checkBoxes[i].isSelected()) {
+                    selectedTasks.add(taskTypeListModel.get(i));
                 }
             }
         }
