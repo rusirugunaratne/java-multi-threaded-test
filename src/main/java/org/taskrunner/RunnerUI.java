@@ -20,7 +20,6 @@ public class RunnerUI extends JFrame {
     private JButton btnForceStopExecution;
     private JTextPane txtConsoleOutput;
     private JButton btnAddTask;
-    private JButton btnUnsubscribe;
     private JRadioButton radioPlatformThreads;
     private JRadioButton radioVirtualThreads;
 
@@ -59,7 +58,6 @@ public class RunnerUI extends JFrame {
         btnForceStopExecution.addActionListener(e -> forceStopExecution());
         btnStartExecution.addActionListener(e -> startExecution());
         btnAddTask.addActionListener(e -> addTask());
-        btnUnsubscribe.addActionListener(e -> unsubscribe());
     }
 
     private void addTaskType() {
@@ -162,30 +160,6 @@ public class RunnerUI extends JFrame {
         }
     }
 
-    private void unsubscribe() {
-        String subscriberName = selectSubscriberForUnsubscription();
-        if (subscriberName != null && !subscriberName.trim().isEmpty()) {
-            String taskType = selectTaskTypeForUnsubscription();
-            if (taskType != null && !taskType.trim().isEmpty()) {
-                Subscriber subscriber = findSubscriber(subscriberName);
-                if (subscriber != null) {
-                    executor.unsubscribe(taskType, subscriber);
-                    Logger.getInstance().log("Subscriber " + subscriberName.trim() + " unsubscribed from task type: " + taskType, Color.RED);
-                }
-            }
-        }
-    }
-
-    private Subscriber findSubscriber(String subscriberName) {
-        for (int i = 0; i < subscriberListModel.size(); i++) {
-            String name = subscriberListModel.get(i);
-            if (name.equals(subscriberName)) {
-                return new Subscriber(name);
-            }
-        }
-        return null;
-    }
-
     private void addDefaultSubscriber() {
         String defaultSubscriberName = "DFLT_SUB_01";
         List<String> defaultTasks = Arrays.asList("TSK_01", "TSK_02");
@@ -204,14 +178,6 @@ public class RunnerUI extends JFrame {
 
     private String selectTaskTypeForNewTask() {
         return selectItemFromList("Select Task Type for New Task:", taskTypeListModel);
-    }
-
-    private String selectSubscriberForUnsubscription() {
-        return selectItemFromList("Select Subscriber to Unsubscribe:", subscriberListModel);
-    }
-
-    private String selectTaskTypeForUnsubscription() {
-        return selectItemFromList("Select Task Type to Unsubscribe:", taskTypeListModel);
     }
 
     private String selectItemFromList(String label, DefaultListModel<String> listModel) {

@@ -10,7 +10,7 @@ public class TaskExecutor {
     private final Map<String, List<Subscriber>> subscribers = new ConcurrentHashMap<>();
     private final Logger logger = Logger.getInstance();
 
-    public void setExecutorService(ExecutorService executorService){
+    public void setExecutorService(ExecutorService executorService) {
         this.executorService = executorService;
     }
 
