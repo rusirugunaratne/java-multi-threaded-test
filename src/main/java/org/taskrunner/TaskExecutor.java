@@ -2,19 +2,16 @@ package org.taskrunner;
 
 import java.awt.*;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
-public class Executor {
-    private final ExecutorService executorService;
+public class TaskExecutor {
+    private ExecutorService executorService;
     private final Map<String, List<Subscriber>> subscribers = new ConcurrentHashMap<>();
     private final Logger logger = Logger.getInstance();
 
-    public Executor(int threadPoolSize) {
-        executorService = Executors.newFixedThreadPool(threadPoolSize);
+    public void setExecutorService(ExecutorService executorService){
+        this.executorService = executorService;
     }
 
     public void subscribe(String taskType, Subscriber subscriber) {
@@ -26,17 +23,17 @@ public class Executor {
         List<Subscriber> subs = subscribers.get(taskType);
         if (subs != null) {
             subs.remove(subscriber);
-            logger.log("Subscriber removed for task type: " + taskType, Color.ORANGE);
+            logger.log("Subscriber " + subscriber.getSubscriberName() + " removed for task type: " + taskType, Color.ORANGE);
         }
     }
 
-    public Future<String> submit(Task task) {
-        return executorService.submit(() -> {
+    public void submit(Task task) {
+        executorService.submit(() -> {
             try {
-                logger.log("Executing task: " + task.getTaskType(), Color.GREEN);
+                logger.log("Executing task: " + task.getType(), Color.GREEN);
                 String result = task.call();
-                logger.log("Task completed: " + task.getTaskType() + " with result: " + result, Color.GREEN);
-                notifySubscribers(task.getTaskType(), result);
+                logger.log("Task completed: " + task.getType() + " with result: " + result, Color.GREEN);
+                notifySubscribers(task.getType(), result);
                 return result;
             } catch (Exception e) {
                 logger.log("Error executing task: " + e.getMessage(), Color.RED);

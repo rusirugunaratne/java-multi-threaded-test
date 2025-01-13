@@ -4,33 +4,28 @@ import java.awt.*;
 import java.util.concurrent.Callable;
 
 public class Task implements Callable<String> {
-    private final String taskType;
+    private final String type;
     private final int delay;
+    private final String name;
 
-    // Access the singleton Logger
     private final Logger logger = Logger.getInstance();
 
-    public Task(String taskType, int delay) {
-        this.taskType = taskType;
+    public Task(String type, String name, int delay) {
+        this.type = type;
+        this.name = name;
         this.delay = delay;
     }
 
-    public String getTaskType() {
-        return taskType;
+    public String getType() {
+        return type;
     }
 
     @Override
     public String call() throws Exception {
-        // Log task start
-        logger.log("Task of type " + taskType + " started...", Color.GREEN);
-
-        // Simulate task execution with delay
+        logger.log("Task " + type + " : " + name + " started...", Color.GREEN);
         Thread.sleep(delay);
-
-        // Log task completion
-        String executionCompletionMessage = "Task of type " + taskType + " completed...";
+        String executionCompletionMessage = "Task " + type + " : " + name + " completed...";
         logger.log(executionCompletionMessage, Color.BLUE);
-
         return executionCompletionMessage;
     }
 }

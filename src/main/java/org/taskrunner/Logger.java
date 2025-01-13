@@ -23,20 +23,17 @@ public class Logger {
 
     public synchronized void log(String message, Color color) {
         if (outputPane == null) {
-            System.out.println(message); // Fallback to console if no JTextPane is set
+            System.out.println(message);
             return;
         }
-
         StyledDocument doc = outputPane.getStyledDocument();
         Style style = outputPane.addStyle("ConsoleStyle", null);
         StyleConstants.setForeground(style, color);
-
         try {
             doc.insertString(doc.getLength(), message + "\n", style);
         } catch (Exception e) {
             e.printStackTrace();
         }
-
-        outputPane.setCaretPosition(doc.getLength()); // Auto-scroll to the bottom
+        outputPane.setCaretPosition(doc.getLength());
     }
 }
