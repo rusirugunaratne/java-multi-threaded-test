@@ -19,14 +19,6 @@ public class TaskExecutor {
         logger.log("Subscriber added for task type: " + taskType, Color.BLUE);
     }
 
-    public void unsubscribe(String taskType, Subscriber subscriber) {
-        List<Subscriber> subs = subscribers.get(taskType);
-        if (subs != null) {
-            subs.remove(subscriber);
-            logger.log("Subscriber " + subscriber.getSubscriberName() + " removed for task type: " + taskType, Color.ORANGE);
-        }
-    }
-
     public void submit(Task task) {
         executorService.submit(() -> {
             try {

@@ -177,17 +177,17 @@ public class RunnerUI extends JFrame {
     }
 
     private String selectTaskTypeForNewTask() {
-        return selectItemFromList("Select Task Type for New Task:", taskTypeListModel);
+        return selectItemFromList(taskTypeListModel);
     }
 
-    private String selectItemFromList(String label, DefaultListModel<String> listModel) {
+    private String selectItemFromList(DefaultListModel<String> listModel) {
         JComboBox<String> comboBox = new JComboBox<>();
         for (int i = 0; i < listModel.size(); i++) {
             comboBox.addItem(listModel.get(i));
         }
 
         JPanel panel = new JPanel();
-        panel.add(new JLabel(label));
+        panel.add(new JLabel("Select Task Type for New Task:"));
         panel.add(comboBox);
 
         int option = JOptionPane.showConfirmDialog(this, panel, "Select Item", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);

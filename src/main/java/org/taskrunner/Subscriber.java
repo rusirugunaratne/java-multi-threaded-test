@@ -6,6 +6,7 @@ import java.util.Set;
 public class Subscriber {
     private final String subscriberName;
     private final Set<String> taskTypes;
+    private final Logger logger = Logger.getInstance();
 
     public Subscriber(String subscriberName) {
         this.subscriberName = subscriberName;
@@ -18,7 +19,7 @@ public class Subscriber {
 
     public void addTaskType(String taskType) {
         taskTypes.add(taskType);
-        Logger.getInstance().log(subscriberName + " subscribed to task type: " + taskType, java.awt.Color.BLUE);
+        logger.log(subscriberName + " subscribed to task type: " + taskType, java.awt.Color.BLUE);
     }
 
     public Set<String> getSubscribedTaskTypes() {
@@ -27,7 +28,6 @@ public class Subscriber {
 
     public void update(Topic topic) {
         String message = subscriberName + " received result for task type " + topic.taskType() + ": " + topic.result();
-        Logger.getInstance().log(message, java.awt.Color.GREEN);
-        System.out.println(message);
+        logger.log(message, java.awt.Color.GREEN);
     }
 }
